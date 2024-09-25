@@ -16,7 +16,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">
-  <a href="https://synthrad2023.grand-challenge.org/">
+  <a href="https://synthrad2025.grand-challenge.org/">
     <img src="./SynthRAD_banner.png" alt="Logo" width="770" height="160">
   </a>
 
