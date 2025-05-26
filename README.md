@@ -80,7 +80,7 @@ With this template, you can submit your algorithm (with minimal effort) to the t
 
 ### Dependencies
 
-For building the algorithm for submission, the user should have access to Docker [https://docs.docker.com/] on their system. (Note: Submissions to the test phase are allowed only with docker containers). This algorithm template was tested using Ubuntu 20.04.6 and Docker 23.0.4.
+For building the algorithm for submission, the user should have access to Docker [https://docs.docker.com/] on their system. (Note: Submissions to the test phase are allowed only with docker containers). This algorithm template was tested using Ubuntu 24.04 and Docker 28.1.1.
 
 Please make sure to list the requirements for your algorithm in the `requirements.txt` file as this will be picked up when building the docker container. 
 

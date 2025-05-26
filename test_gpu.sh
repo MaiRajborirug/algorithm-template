@@ -25,12 +25,12 @@ docker run --rm \
 
 docker run --rm \
         -v synthrad_algorithm-output-$VOLUME_SUFFIX:/output/ \
-        python:3.9-slim cat /output/results.json | python -m json.tool
+        python:3.12-slim cat /output/results.json | python3 -m json.tool
 
 docker run --rm \
         -v $SCRIPTPATH/test:/input \
         -v synthrad_algorithm-output-$VOLUME_SUFFIX:/output/ \
-        python:3.9-slim python -c "import json, sys; f1 = json.load(open('/output/results.json')); f2 = json.load(open('/input/expected_output.json')); sys.exit(f1 != f2);"
+        python:3.12-slim python -c "import json, sys; f1 = json.load(open('/output/results.json')); f2 = json.load(open('/input/expected_output.json')); sys.exit(f1 != f2);"
 
 if [ $? -eq 0 ]; then
     echo "Tests successfully passed..."

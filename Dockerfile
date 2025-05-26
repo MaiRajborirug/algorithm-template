@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.12-slim
 ARG task_type
 
 ENV TASK_TYPE=$task_type
@@ -18,7 +18,7 @@ ENV PATH="/home/algorithm/.local/bin:${PATH}"
 RUN python -m pip install --user -U pip
 
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
-RUN python -m pip install --user -rrequirements.txt
+RUN python -m pip install --user -r requirements.txt
 
 COPY --chown=algorithm:algorithm .env /opt/algorithm/
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
