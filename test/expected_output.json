@@ -3,17 +3,17 @@
         "outputs": [
             {
                 "type": "metaio_image",
-                "filename": "/output/images/synthetic-ct/1BAxxx.nii.gz"
+                "filename": "/output/images/synthetic-ct/1HNAxxx.nii.gz"
             }
         ],
         "inputs": [
             {
                 "type": "metaio_image",
-                "filename": "/input/images/mri/1BAxxx.nii.gz"
+                "filename": "/input/images/mri/1HNAxxx.nii.gz"
             },
             {
                 "type": "metaio_image",
-                "filename": "/input/images/body/1BAxxx.nii.gz"
+                "filename": "/input/images/body/1HNAxxx.nii.gz"
             },
 
             {
