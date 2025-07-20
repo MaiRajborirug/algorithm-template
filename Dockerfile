@@ -20,7 +20,6 @@ RUN python -m pip install --user -U pip
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
 RUN python -m pip install --user -r requirements.txt
 
-COPY --chown=algorithm:algorithm .env /opt/algorithm/
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
 COPY --chown=algorithm:algorithm base_algorithm.py /opt/algorithm/
 

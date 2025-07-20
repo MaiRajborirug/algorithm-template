@@ -1,7 +1,10 @@
 evalutils==0.3.1
 SimpleITK
 scikit-learn
-#torch # Uncomment if you want to use PyTorch
+torch
 numpy
 scipy
 python-dotenv
+tqdm
+tensorboard
+flow-matching==1.0.10
