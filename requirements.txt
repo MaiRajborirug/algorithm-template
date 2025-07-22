@@ -7,4 +7,8 @@ scipy
 python-dotenv
 tqdm
 tensorboard
+matplotlib
 flow-matching==1.0.10
+monai_generative==0.2.3 # from generative.networks.nets import DiffusionModelUNet, ControlNet
+PyYAML==6.0.2
+scikit-image

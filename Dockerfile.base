@@ -17,15 +17,14 @@ ENV PATH="/home/algorithm/.local/bin:${PATH}"
 
 RUN python -m pip install --user -U pip
 
-# Copy and install requirements first (this layer will be cached)
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
 RUN python -m pip install --user -r requirements.txt
 
-# Copy Python files last (these change most frequently)
-COPY --chown=algorithm:algorithm utils /opt/algorithm/utils/
-COPY --chown=algorithm:algorithm process.py /opt/algorithm/
-COPY --chown=algorithm:algorithm base_algorithm.py /opt/algorithm/
-COPY --chown=algorithm:algorithm exp_configs /opt/algorithm/exp_configs/
-COPY --chown=algorithm:algorithm some_checkpoints /opt/algorithm/some_checkpoints/
+# Don't copy the Python files - they will be mounted as volumes during development
+# COPY --chown=algorithm:algorithm utils /opt/algorithm/utils/
+# COPY --chown=algorithm:algorithm process.py /opt/algorithm/
+# COPY --chown=algorithm:algorithm base_algorithm.py /opt/algorithm/
+# COPY --chown=algorithm:algorithm exp_configs /opt/algorithm/exp_configs/
+# COPY --chown=algorithm:algorithm some_checkpoints /opt/algorithm/some_checkpoints/
 
-ENTRYPOINT python -m process $0 $@
+ENTRYPOINT python -m process $0 $@ 

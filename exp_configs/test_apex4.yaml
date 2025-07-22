@@ -1,0 +1,98 @@
+model_args:
+  # Defines whether we work in 2D, 3D, etc. For 2D medical images, use 2.
+  spatial_dims: 3 #2
+  # Number of input channels (e.g., 1 for grayscale ultrasound or MRI slices).
+  in_channels: 1 # ct
+  # Number of output channels (e.g., 1 for generating a single-channel image).
+  out_channels: 1
+  # Number of residual blocks at each UNet level (one value per level).
+  num_res_blocks: [2, 2, 2, 2, 2]
+  # Number of channels at each UNet level (must match the length of num_res_blocks).
+  num_channels: [32, 64, 128, 256, 512]
+  # Defines which levels of the UNet incorporate attention layers.
+  attention_levels: [False, False, True, True, True]
+  # Number of groups for Group Normalization in residual blocks/attention.
+  norm_num_groups: 32
+  # Whether or not to include up/down sampling in each residual block.
+  resblock_updown: True
+  # Number of channels used in each attention head, typically matches num_channels.
+  num_head_channels: [32, 64, 128, 256, 512]
+  # Number of layers if a transformer block is employed (cross-attention).
+  transformer_num_layers: 6
+  
+
+  # Toggles the use of more efficient “flash” attention implementations, if supported.
+  use_flash_attention: false # true
+  # Whether to enable cross-attention/conditioning in the UNet.
+  with_conditioning: true
+  # Dimensionality for cross-attention embeddings (e.g., number of classes).
+  cross_attention_dim: 3
+
+  # If using additional conditioning embeddings (e.g., from masks), specify how many channels.
+  # conditioning_embedding_num_channels: [16]
+
+general_args:
+  # Toggle whether to condition on segmentation masks.
+  mask_conditioning: true
+  # Toggle whether to condition on class labels.
+  class_conditioning: true
+  # Random seed for reproducibility, which is int or <blank>
+  seed: 1
+
+data_args:
+  # NOTE: added
+  train_root: "/home/rajbori.p/dataset/proj_synthrad/training/synthRAD2025_Train_ABCD/Task1/AB"
+  val_root: "/home/rajbori.p/dataset/proj_synthrad/training/synthRAD2025_Train_ABCD/Task1/AB"
+  npy_root: "/home/rajbori.p/dataset/proj_synthrad/training"
+  # Path to your dataset in .pkl format (must match the data structure specified in the README).
+  # pickle_path: "./data/camus/dataset.pkl"
+  pickle_path: "./configs/data_path.pkl"
+
+  # Dictionary keys in the loaded pickle file to use for training and validation splits.
+  split_train: "train"
+  split_val: "valid"
+
+  # scale CT image as 'linear','sigmoid','sigmoid2', 'uniform', 'uniform2'
+  scale: "uniform2"
+  # scale mask image as 'linear','sigmoid', 'uniform', 'uniform2'
+  scale_mask: "linear"
+
+  # Dataset sampling parameters
+  train_n_images: 500 # 15
+  train_n_patches: 50 # 50
+  train_reverse: false
+  val_n_images: 500 # 5
+  val_n_patches: 5 # 50
+  val_reverse: true
+
+train_args:
+  # Number of epochs for model training.
+  num_epochs: 700 # 500
+  # Batch size for training (change based on your GPU memory).
+  batch_size: 2
+  # Learning rate for the optimizer. -> already adapt to batch size
+  lr: 0.00002
+  # Print training status (loss, iteration, etc.) every `print_every` steps.
+  print_every: 1
+  # Run a validation pass every `val_freq` epochs.
+  val_freq: 10 # 10
+  # Which device to run on: "cuda", "cuda:{i}" for GPU, "cpu" for CPU.
+  device: "cuda"
+  # If true, compute MSE only over mask==1 voxels; otherwise standard full-volume MSE
+  use_masked_loss: false
+  # Number of samples to visualize/validate during validation passes.
+  num_val_samples: 10 # 10
+  # Directory in which checkpoints and logs will be saved.
+  checkpoint_dir: "checkpoints/apex-dist3-u2lf-AB"
+
+  # Enable multi-GPU parallelism
+  use_data_parallel: false
+
+solver_args:
+  # Which numerical solver/flow method to use (e.g., "euler", "rk4", etc.).
+  method: "euler"
+  # Solver step size for numeric integration.
+  step_size: 0.1
+  # Number of time points for intermediate sampling or evaluation. (between [0,...,1])
+  # NOTE: This must be ≤ the number of total solver steps.
+  time_points: 10

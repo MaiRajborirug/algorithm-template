@@ -104,3 +104,9 @@ ENV/
 # Docker 
 *.tar.gz
 *.tar
+
+# Large files
+*.pth
+*.mha
+*.npy
+*.nii.gz

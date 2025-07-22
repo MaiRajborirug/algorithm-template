@@ -2,14 +2,18 @@
 
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
-./build.sh
+# Only build the base image once (without copying the changing files)
+if [[ "$(docker images -q synthrad_algorithm_base 2> /dev/null)" == "" ]]; then
+    echo "Building base image (this only happens once)..."
+    docker build -t synthrad_algorithm_base -f Dockerfile.base "$SCRIPTPATH"
+fi
 
 VOLUME_SUFFIX=$(dd if=/dev/urandom bs=32 count=1 | md5sum | cut --delimiter=' ' --fields=1)
-MEM_LIMIT="30g"  # Maximum is currently 30g, configurable in your algorithm image settings on grand challenge
+MEM_LIMIT="30g"
 
 docker volume create synthrad_algorithm-output-$VOLUME_SUFFIX
 
-# Do not change any of the parameters to docker run, these are fixed
+# Run with volume mounts for development (no rebuild needed)
 docker run --rm \
         --gpus=all \
         --memory="${MEM_LIMIT}" \
@@ -20,8 +24,13 @@ docker run --rm \
         --shm-size="128m" \
         --pids-limit="256" \
         -v $SCRIPTPATH/test:/input \
+        -v $SCRIPTPATH/process.py:/opt/algorithm/process.py \
+        -v $SCRIPTPATH/base_algorithm.py:/opt/algorithm/base_algorithm.py \
+        -v $SCRIPTPATH/utils:/opt/algorithm/utils \
+        -v $SCRIPTPATH/exp_configs:/opt/algorithm/exp_configs \
+        -v $SCRIPTPATH/some_checkpoints:/opt/algorithm/some_checkpoints \
         -v synthrad_algorithm-output-$VOLUME_SUFFIX:/output/ \
-        synthrad_algorithm
+        synthrad_algorithm_base
 
 docker run --rm \
         -v synthrad_algorithm-output-$VOLUME_SUFFIX:/output/ \
@@ -38,4 +47,4 @@ else
     echo "Expected output was not found..."
 fi
 
-# docker volume rm synthrad_algorithm-output-$VOLUME_SUFFIX
+# docker volume rm synthrad_algorithm-output-$VOLUME_SUFFIX 

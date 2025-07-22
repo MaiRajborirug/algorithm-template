@@ -1,0 +1,24 @@
+{
+  "train": [
+    {"image": "dataMOTFM/1ABA005/ct.mha",
+     "mask": "dataMOTFM/1ABA005/mr.mha",
+     "mask_": "dataMOTFM/1ABA005/mask.mha",
+    "class": 0}, 
+    {"image": "dataMOTFM/1ABA009/ct.mha",
+     "mask": "dataMOTFM/1ABA009/mr.mha",
+     "mask_": "dataMOTFM/1ABA009/mask.mha",
+    "class":0}
+  ],
+  "valid": [
+    {"image": "dataMOTFM/1ABA011/ct.mha",
+     "mask": "dataMOTFM/1ABA011/mr.mha",
+     "mask_": "dataMOTFM/1ABA011/mask.mha",
+     "class":0}
+  ],
+  "test":[
+    {"image": "dataMOTFM/1ABA012/ct.mha",
+     "mask": "dataMOTFM/1ABA012/mr.mha",
+     "mask_": "dataMOTFM/1ABA012/mask.mha",
+     "class":0}
+  ]
+}
