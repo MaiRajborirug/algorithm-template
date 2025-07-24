@@ -25,10 +25,11 @@ if Path(".env").exists():
 
     TASK_TYPE = config["TASK_TYPE"]
     INPUT_FOLDER = config["INPUT_FOLDER"]
-
+    OUTPUT_FOLDER = config["OUTPUT_FOLDER"]
     print("########## ENVIRONMENT VARIABLES ##########")
     print(f"TASK_TYPE: {TASK_TYPE}")
     print(f"INPUT_FOLDER: {INPUT_FOLDER}")
+    print(f"OUTPUT_FOLDER: {OUTPUT_FOLDER}")
 else:
     TASK_TYPE = "mri"
     INPUT_FOLDER = "/input"
@@ -109,7 +110,7 @@ class BaseSynthradAlgorithm(ABC):
         )
 
         with open(self.region_path, "r") as f:
-            self.region = json.load(f)
+            self.region = json.load(f)["organ"]
 
     def _load_cases(
         self,
@@ -117,7 +118,6 @@ class BaseSynthradAlgorithm(ABC):
         file_loader: ImageLoader,
     ) -> DataFrame:
         cases = []
-
         for fp in sorted(folder.glob("*")):
             try:
                 new_cases = file_loader.load(fname=fp)
@@ -146,6 +146,8 @@ class BaseSynthradAlgorithm(ABC):
 
         for idx, case in enumerate(zip(self.images, self.masks)):
             self._case_results.append(self.process_case(idx=idx, case=case))
+            if idx == 0: # keep it at 1
+                break
 
     def process_case(self, idx: int, case: List[DataFrame]) -> Dict:
         images, images_file_paths = {}, {}
@@ -156,7 +158,7 @@ class BaseSynthradAlgorithm(ABC):
         images["region"] = self.region
 
         # Predict and generate output
-        out = self.predict(input_dict=images)
+        out = self.predict(input_dict=images) # Note: need changes
 
         # Write resulting segmentation to output location
         out_path = self.output_path / images_file_paths["image"].name
@@ -196,10 +198,12 @@ class BaseSynthradAlgorithm(ABC):
 
     def save(self):
         with open(str(self.output_file), "w") as f:
-            json.dump(self._case_results, f)
+            json.dump(self._case_results, f, indent=2) # indent=2 for pretty format
 
     def process(self):
         self.load()
         self.validate()
-        self.process_cases()
-        self.save()
+        self.process_cases() # predicts
+        self.save() 
+
+# str(self.masks[0]['path']).split('/')[-1]

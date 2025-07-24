@@ -1,0 +1,94 @@
+[
+  {
+    "outputs": [
+      {
+        "type": "metaio_image",
+        "filename": "output/images/synthetic-ct/1AB005.mha"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/mri/1AB005.mha"
+      },
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/body/1ABA005.mha"
+      },
+      {
+        "type": "String",
+        "filename": "test_mha/region.json"
+      }
+    ],
+    "error_messages": []
+  },
+  {
+    "outputs": [
+      {
+        "type": "metaio_image",
+        "filename": "output/images/synthetic-ct/1HNA001.mha"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/mri/1HNA001.mha"
+      },
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/body/1HNA001.mha"
+      },
+      {
+        "type": "String",
+        "filename": "test_mha/region.json"
+      }
+    ],
+    "error_messages": []
+  },
+  {
+    "outputs": [
+      {
+        "type": "metaio_image",
+        "filename": "output/images/synthetic-ct/1HNA004.mha"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/mri/1HNA004.mha"
+      },
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/body/1HNA004.mha"
+      },
+      {
+        "type": "String",
+        "filename": "test_mha/region.json"
+      }
+    ],
+    "error_messages": []
+  },
+  {
+    "outputs": [
+      {
+        "type": "metaio_image",
+        "filename": "output/images/synthetic-ct/1THA001.mha"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/mri/1THA001.mha"
+      },
+      {
+        "type": "metaio_image",
+        "filename": "test_mha/images/body/1THA001.mha"
+      },
+      {
+        "type": "String",
+        "filename": "test_mha/region.json"
+      }
+    ],
+    "error_messages": []
+  }
+]

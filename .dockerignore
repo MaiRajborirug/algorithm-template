@@ -15,3 +15,8 @@ venv/
 .venv/
 *.log
 .DS_Store
+
+*.pth
+*.mha
+*.npy
+*.nii.gz
