@@ -61,9 +61,9 @@ SAMPLING_STEPS = {
 }
 
 # Paths - all defined in one location
-config_path = "/media/prajbori/sda/private/github/proj_synthrad/MOTFM3D/exp_configs/test20-testseed1.yaml"
+config_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/exp_configs/test20-testseed1.yaml"
 inference_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001"
-latest_ckpt_dir = "/media/prajbori/sda/private/github/proj_synthrad/MOTFM3D/checkpoints/test20-testseed1/latest"
+latest_ckpt_dir = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/some_checkpoints/apex-dist3-llf-HN"
 
 CT_UPPER = 3071.0
 CT_LOWER = -1024.0

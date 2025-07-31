@@ -101,6 +101,10 @@ class BaseSynthradAlgorithm(ABC):
         self._case_results = []
 
     def load(self):
+        print(f"Loading images from: {self.input_path}")
+        print(f"Loading masks from: {self.mask_path}")
+        print(f"Loading region from: {self.region_path}")
+        
         self.images = self._load_cases(
             folder=self.input_path, file_loader=self._file_loader
         )
@@ -110,7 +114,10 @@ class BaseSynthradAlgorithm(ABC):
         )
 
         with open(self.region_path, "r") as f:
-            self.region = json.load(f)["organ"]
+            self.region = json.load(f)
+            
+        print(f"Loaded {len(self.images)} images and {len(self.masks)} masks")
+        print(f"Region: {self.region}")
 
     def _load_cases(
         self,
@@ -118,15 +125,20 @@ class BaseSynthradAlgorithm(ABC):
         file_loader: ImageLoader,
     ) -> DataFrame:
         cases = []
+        print(f"Scanning folder: {folder}")
+        
         for fp in sorted(folder.glob("*")):
+            print(f"Found file: {fp}")
             try:
                 new_cases = file_loader.load(fname=fp)
+                print(f"Successfully loaded {len(new_cases)} cases from {fp}")
+                cases.extend(new_cases)
             except FileLoaderError:
                 logger.warning(f"Could not load {fp.name} using {file_loader}.")
-            else:
-                cases.extend(new_cases)
+                print(f"Failed to load {fp.name}")
 
         if len(cases) == 0:
+            print(f"No valid files found in {folder}")
             raise FileLoaderError(
                 f"Could not load any files in {folder} with " f"{file_loader}."
             )
@@ -145,9 +157,11 @@ class BaseSynthradAlgorithm(ABC):
         self._case_results = []
 
         for idx, case in enumerate(zip(self.images, self.masks)):
+            # NOTE: test on only 1 image
+            if idx !=2:
+                continue
             self._case_results.append(self.process_case(idx=idx, case=case))
-            if idx == 0: # keep it at 1
-                break
+
 
     def process_case(self, idx: int, case: List[DataFrame]) -> Dict:
         images, images_file_paths = {}, {}
@@ -156,9 +170,8 @@ class BaseSynthradAlgorithm(ABC):
         images["mask"], images_file_paths["mask"] = self._load_input_image(case[1])
 
         images["region"] = self.region
-
         # Predict and generate output
-        out = self.predict(input_dict=images) # Note: need changes
+        out = self.predict(input_dict=images)
 
         # Write resulting segmentation to output location
         out_path = self.output_path / images_file_paths["image"].name

@@ -23,14 +23,12 @@ docker run --rm \
         --security-opt="no-new-privileges" \
         --shm-size="128m" \
         --pids-limit="256" \
-        -v $SCRIPTPATH/test:/input \
-        -v $SCRIPTPATH/process.py:/opt/algorithm/process.py \
-        -v $SCRIPTPATH/base_algorithm.py:/opt/algorithm/base_algorithm.py \
-        -v $SCRIPTPATH/utils:/opt/algorithm/utils \
-        -v $SCRIPTPATH/exp_configs:/opt/algorithm/exp_configs \
-        -v $SCRIPTPATH/some_checkpoints:/opt/algorithm/some_checkpoints \
+        -v $SCRIPTPATH/test_mha:/input \
         -v synthrad_algorithm-output-$VOLUME_SUFFIX:/output/ \
+        -v $SCRIPTPATH/some_checkpoints:/opt/algorithm/some_checkpoints \
         synthrad_algorithm_base
+
+        # -v $SCRIPTPATH/test:/input \ # Can't have spacebar after \
 
 docker run --rm \
         -v synthrad_algorithm-output-$VOLUME_SUFFIX:/output/ \

@@ -1,8 +1,13 @@
 FROM python:3.12-slim
 ARG task_type
 
-ENV TASK_TYPE=$task_type
+ENV TASK_TYPE=${task_type:-mri}
 ENV EXECUTE_IN_DOCKER=1
+ENV INPUT_FOLDER=/input
+ENV OUTPUT_FOLDER=/output
+ENV CONFIG_PATH=/opt/algorithm/exp_configs/test20-testseed1-nomaskloss.yaml
+ENV CHECKPOINT_DIR=/opt/algorithm/some_checkpoints/test20-testseed1-nomaskloss/epoch_500
+ENV SAMPLING_QUALITY=fast
 
 RUN groupadd -r algorithm && useradd -m --no-log-init -r -g algorithm algorithm
 
@@ -21,10 +26,10 @@ COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
 RUN python -m pip install --user -r requirements.txt
 
 # Don't copy the Python files - they will be mounted as volumes during development
-# COPY --chown=algorithm:algorithm utils /opt/algorithm/utils/
-# COPY --chown=algorithm:algorithm process.py /opt/algorithm/
-# COPY --chown=algorithm:algorithm base_algorithm.py /opt/algorithm/
-# COPY --chown=algorithm:algorithm exp_configs /opt/algorithm/exp_configs/
+COPY --chown=algorithm:algorithm utils /opt/algorithm/utils/
+COPY --chown=algorithm:algorithm process.py /opt/algorithm/
+COPY --chown=algorithm:algorithm base_algorithm.py /opt/algorithm/
+COPY --chown=algorithm:algorithm exp_configs /opt/algorithm/exp_configs/
 # COPY --chown=algorithm:algorithm some_checkpoints /opt/algorithm/some_checkpoints/
 
 ENTRYPOINT python -m process $0 $@ 
