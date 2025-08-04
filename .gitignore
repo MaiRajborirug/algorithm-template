@@ -114,3 +114,4 @@ output*
 test*
 *orig*
 _*
+slurm_outputs/
