@@ -69,7 +69,7 @@ train_args:
   # Number of epochs for model training.
   num_epochs: 700 # 500
   # Batch size for training (change based on your GPU memory).
-  batch_size: 2
+  batch_size: 1 # 2
   # Learning rate for the optimizer. -> already adapt to batch size
   lr: 0.00002
   # Print training status (loss, iteration, etc.) every `print_every` steps.

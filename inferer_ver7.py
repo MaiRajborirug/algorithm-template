@@ -6,7 +6,7 @@ import numpy as np
 import SimpleITK as sitk
 from skimage.metrics import structural_similarity as ssim
 from matplotlib import pyplot as plt
-
+from tqdm import tqdm
 # Suppress warnings
 warnings.filterwarnings("ignore")
 
@@ -26,7 +26,9 @@ class SynthradAlgorithm:
     CT synthesis from MRI using flow matching with sliding window inference.
     """
     
-    def __init__(self, config_path, checkpoint_dir, sampling_quality="fast", device=None):
+    def __init__(self, config_path, checkpoint_dir, sampling_quality="fast", device='cuda:1',
+                 ct_upper=3071.0, ct_lower=-1024.0, mri_upper=1357.0, mri_lower=0.0,
+                 padding_mode="reflect", sigma_scale=0.125, mode="gaussian", overlap=0.5):
         """
         Initialize the SynthradAlgorithm.
         
@@ -34,13 +36,25 @@ class SynthradAlgorithm:
             config_path: Path to the configuration YAML file
             checkpoint_dir: Directory containing model checkpoint
             sampling_quality: Sampling quality ("fast", "medium", "high", "ultra")
-            device: Device to use (None for auto-detection)
+            device: Device to use (default: 'cuda:1')
+            ct_upper: Upper bound for CT values
+            ct_lower: Lower bound for CT values
+            mri_upper: Upper bound for MRI values
+            mri_lower: Lower bound for MRI values
+            padding_mode: Padding mode for sliding window
+            sigma_scale: Sigma scale for sliding window
+            mode: Mode for sliding window inference
+            overlap: Overlap for sliding window
         """
-        # Constants
-        self.CT_UPPER = 3071.0
-        self.CT_LOWER = -1024.0
-        self.MRI_UPPER = 1357.0
-        self.MRI_LOWER = 0.0
+        # Constants from parameters
+        self.CT_UPPER = ct_upper
+        self.CT_LOWER = ct_lower
+        self.MRI_UPPER = mri_upper
+        self.MRI_LOWER = mri_lower
+        self.padding_mode = padding_mode
+        self.sigma_scale = sigma_scale
+        self.mode = mode
+        self.overlap = overlap
         
         # Sampling steps configuration
         self.SAMPLING_STEPS = {
@@ -56,10 +70,11 @@ class SynthradAlgorithm:
         self.num_sampling_steps = self.SAMPLING_STEPS[sampling_quality]
         
         # Device setup
-        if device is None:
-            self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        if not torch.cuda.is_available():
+            print("Warning: CUDA not available, falling back to CPU")
+            self.device = torch.device('cpu')
         else:
-            self.device = device
+            self.device = torch.device(device)
         print(f"Using device: {self.device}")
         
         # Load model
@@ -70,6 +85,33 @@ class SynthradAlgorithm:
         
         # Set model to evaluation mode
         self.model.eval()
+        
+    def save_config(self, exp_name):
+        """Save configuration parameters to a YAML file."""
+        import yaml
+        import os
+        
+        config_data = {
+            'CT_UPPER': self.CT_UPPER,
+            'CT_LOWER': self.CT_LOWER,
+            'MRI_UPPER': self.MRI_UPPER,
+            'MRI_LOWER': self.MRI_LOWER,
+            'padding_mode': self.padding_mode,
+            'sigma_scale': self.sigma_scale,
+            'mode': self.mode,
+            'overlap': self.overlap,
+            'sampling_quality': self.sampling_quality,
+            'num_sampling_steps': self.num_sampling_steps,
+            'device': str(self.device)
+        }
+        
+        config_path = os.path.join(exp_name, "other", "config.yaml")
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        
+        with open(config_path, 'w') as f:
+            yaml.dump(config_data, f, default_flow_style=False)
+        
+        print(f"Configuration saved to: {config_path}")
         
     def _load_model(self, checkpoint_dir):
         """Load and initialize the model."""
@@ -230,19 +272,24 @@ class SynthradAlgorithm:
         out = out * (mask_p > 0.5)
         return out.detach().to(x_init.dtype)
         
-    def predict(self, mri_path, save_path, anatomical_region="HN"):
+    def predict(self, mri_path, save_path, mask_path=None, anatomical_region="HN"):
         """
         Predict CT from MRI and save the result.
         
         Args:
             mri_path: Path to input MRI file (.mha)
             save_path: Path to save the predicted CT (.mha)
+            mask_path: Path to mask file (.mha) - if None, will use full volume mask
             anatomical_region: Anatomical region ("AB", "HN", "TH")
             
         Returns:
-            Path to saved CT file
+            tuple: (Path to saved CT file, dict with timing and patch info)
         """
-        print(f"Loading MRI from: {mri_path}")
+        import time
+        
+        start_time = time.time()
+        
+        # print(f"Loading MRI from: {mri_path}")
         
         # Load MRI
         mri_image = sitk.ReadImage(mri_path)
@@ -252,10 +299,33 @@ class SynthradAlgorithm:
         mri_ras = self._reorient_to_RAS(mri_image)
         mri_arr = sitk.GetArrayFromImage(mri_ras).astype(np.float32)
         
-        print(f"MRI shape: {mri_arr.shape}")
+        print(f"Load MRI: {mri_path.split('/')[-2]}, shape: {mri_arr.shape}")
         
-        # Create mask (assume full volume is valid)
-        mask_arr = np.ones_like(mri_arr, dtype=np.float32)
+        # Load or create mask
+        if mask_path is not None:
+            # print(f"Loading mask from: {mask_path}")
+            mask_image = sitk.ReadImage(mask_path)
+            # Reorient mask to RAS to match MRI
+            mask_ras = self._reorient_to_RAS(mask_image)
+            mask_arr = sitk.GetArrayFromImage(mask_ras).astype(np.float32)
+            
+            # Ensure mask has same shape as MRI
+            if mask_arr.shape != mri_arr.shape:
+                print(f"Warning: Mask shape {mask_arr.shape} doesn't match MRI shape {mri_arr.shape}")
+                print("Resampling mask to match MRI dimensions...")
+                # Resample mask to match MRI dimensions
+                resampler = sitk.ResampleImageFilter()
+                resampler.SetReferenceImage(mri_ras)
+                resampler.SetInterpolator(sitk.sitkNearestNeighbor)
+                mask_ras = resampler.Execute(mask_ras)
+                mask_arr = sitk.GetArrayFromImage(mask_ras).astype(np.float32)
+        else:
+            # print("No mask provided, using full volume mask")
+            # Create mask (assume full volume is valid)
+            mask_arr = np.ones_like(mri_arr, dtype=np.float32)
+        
+        # Ensure mask is binary (0 or 1)
+        mask_arr = (mask_arr > 0.5).astype(np.float32)
         
         # Apply scaling
         mri_scaled = self._scale_mri_array(mri_arr.copy())
@@ -282,24 +352,37 @@ class SynthradAlgorithm:
             
         self.cond_tensor_full = torch.from_numpy(lbl)[None, :]  # [1, 3]
         
-        print(f"Running sliding window inference with {self.num_sampling_steps} steps...")
-        
         # Sliding window inference
         roi_size = (16, 128, 128)
-        overlap = 0.5
+        
+        # Count patches (approximate calculation)
+        z, y, x = mri_arr.shape
+        roi_z, roi_y, roi_x = roi_size
+        overlap_z = int(roi_z * self.overlap)
+        overlap_y = int(roi_y * self.overlap)
+        overlap_x = int(roi_x * self.overlap)
+        
+        step_z = roi_z - overlap_z
+        step_y = roi_y - overlap_y
+        step_x = roi_x - overlap_x
+        
+        num_patches_z = max(1, (z - roi_z) // step_z + 1)
+        num_patches_y = max(1, (y - roi_y) // step_y + 1)
+        num_patches_x = max(1, (x - roi_x) // step_x + 1)
+        total_patches = num_patches_z * num_patches_y * num_patches_x
         
         pred_norm = sliding_window_inference(
             inputs=inputs_stack,
             roi_size=roi_size,
             sw_batch_size=2,
             predictor=self._predictor,
-            overlap=overlap,
-            mode="gaussian",
-            sigma_scale=0.125,
-            padding_mode="reflect",
+            overlap=self.overlap,
+            mode=self.mode,
+            sigma_scale=self.sigma_scale,
+            padding_mode=self.padding_mode,
             cval=0.0,
             sw_device=self.device,
-            device=torch.device("cuda"),
+            device=self.device,
             progress=True,
         )
         
@@ -316,8 +399,29 @@ class SynthradAlgorithm:
         # Save result
         output_path = self._save_result(pred_denorm, save_path, original_mri)
         
-        print(f"CT synthesis completed. Saved to: {output_path}")
-        return output_path
+        # Calculate timing
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        elapsed_minutes = elapsed_time / 60.0
+        
+        # Get image name
+        image_name = os.path.basename(output_path)
+        
+        # Create info dict
+        info = {
+            'elapsed_time': elapsed_time,
+            'elapsed_minutes': elapsed_minutes,
+            'ct_shape': pred_denorm.shape,
+            'mri_shape': mri_arr.shape,
+            'image_name': image_name,
+            'total_patches': total_patches,
+            'time_warning': elapsed_minutes > 15
+        }
+        
+        # print(f"CT synthesis completed. Saved to: {output_path}")
+        print(f"CT synthesis completed. Saved to: {output_path.split('/')[-1]}")
+        
+        return output_path, info
         
     def _save_result(self, output_volume, save_path, original_image):
         """Save predicted CT volume as MHA file with proper metadata."""
@@ -355,6 +459,172 @@ class SynthradAlgorithm:
         print(f"Output volume range: [{np.min(output_volume):.2f}, {np.max(output_volume):.2f}]")
         
         return save_path
+        
+    def process_cases(self, data_path, exp_name, anatomical_region="HN"):
+        """
+        Process multiple cases from a data directory.
+        
+        Args:
+            data_path: Path to data directory containing case folders
+            exp_name: Path to output directory for results
+            anatomical_region: Anatomical region ("AB", "HN", "TH")
+            
+        Returns:
+            dict: Dictionary containing metrics for all processed cases
+        """
+        import os
+        import glob
+        import time
+        import random
+        
+        # Create output directories
+        os.makedirs(exp_name, exist_ok=True)
+        other_dir = os.path.join(exp_name, "other")
+        os.makedirs(other_dir, exist_ok=True)
+        
+        # Create unique summary file name
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        random_suffix = random.randint(1000, 9999)
+        summary_filename = f"summary_metrics_{timestamp}_{random_suffix}.txt"
+        summary_path = os.path.join(other_dir, summary_filename)
+        
+        # Save configuration
+        self.save_config(exp_name)
+        
+        # Get all case directories
+        case_dirs = [d for d in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, d))]
+        case_dirs.sort()  # Sort for consistent processing order
+        
+        print(f"Found {len(case_dirs)} cases in {data_path}")
+        print(f"Output directory: {exp_name}")
+        print(f"Summary file: {summary_path}")
+        
+        all_metrics = {}
+        
+        # Write header to summary file
+        with open(summary_path, 'w') as f:
+            f.write("CASE METRICS SUMMARY\n")
+            f.write("="*50 + "\n")
+            f.write(f"Timestamp: {timestamp}\n")
+            f.write(f"Data path: {data_path}\n")
+            f.write(f"Anatomical region: {anatomical_region}\n")
+            f.write(f"Total cases: {len(case_dirs)}\n\n")
+            f.write("PER-CASE METRICS:\n")
+            f.write("-"*30 + "\n")
+            f.flush()  # Ensure header is written immediately
+        
+        for case_dir in tqdm(case_dirs):
+            case_path = os.path.join(data_path, case_dir)
+            # print(f"Processing: {case_dir}")
+            
+            # Define file paths for this case
+            mri_path = os.path.join(case_path, "mr.mha")
+            mask_path = os.path.join(case_path, "mask.mha")
+            gt_ct_path = os.path.join(case_path, "ct.mha")
+            
+            # Check if required files exist
+            if not os.path.exists(mri_path):
+                print(f"    MRI file not found: {mri_path}")
+                continue
+            if not os.path.exists(mask_path):
+                print(f"    Mask file not found: {mask_path}")
+                continue
+            if not os.path.exists(gt_ct_path):
+                print(f"    Ground truth CT file not found: {gt_ct_path}")
+                continue
+            
+            # Define output paths
+            sct_filename = f"sct_{case_dir}.mha"
+            sct_path = os.path.join(exp_name, sct_filename)
+            comparison_plot_path = os.path.join(other_dir, f"sct_{case_dir}.png")
+            
+            try:
+                # Predict CT from MRI
+                predicted_ct_path, info = self.predict(
+                    mri_path=mri_path,
+                    save_path=sct_path,
+                    mask_path=mask_path,
+                    anatomical_region=anatomical_region
+                )
+                
+                # Calculate metrics
+                metrics = self.calculate_metrics(
+                    ground_truth_ct_path=gt_ct_path,
+                    predicted_ct_path=predicted_ct_path,
+                    mask_path=mask_path
+                )
+                
+                # Store metrics with additional info
+                all_metrics[case_dir] = {**metrics, **info}
+                
+                # Create comparison plot
+                self.plot_comparison(
+                    ground_truth_ct_path=gt_ct_path,
+                    predicted_ct_path=predicted_ct_path,
+                    mask_path=mask_path,
+                    slice_indices=None,  # Use default middle slices
+                    save_path=comparison_plot_path
+                )
+                
+                # Print and write metrics immediately
+                time_warning = "!" if info['time_warning'] else ""
+                metrics_line = f"   MAE: {metrics['MAE']:.4f}, PSNR: {metrics['PSNR']:.4f}dB, SSIM: {metrics['SSIM']:.4f}, Time: {info['elapsed_minutes']:.1f}min{time_warning}, Patches: {info['total_patches']}, Shape: {info['ct_shape']}, File: {info['image_name']}"
+                print(metrics_line)
+                
+                # Write to summary file immediately
+                with open(summary_path, 'a') as f:
+                    f.write(f"{case_dir}: MAE={metrics['MAE']:.4f}, PSNR={metrics['PSNR']:.4f}dB, SSIM={metrics['SSIM']:.4f}, Time={info['elapsed_minutes']:.1f}min{time_warning}, Patches={info['total_patches']}, Shape={info['ct_shape']}, File={info['image_name']}\n")
+                    f.flush()  # Ensure it's written immediately
+                
+            except Exception as e:
+                error_msg = f"   Error: {str(e)}"
+                print(error_msg)
+                all_metrics[case_dir] = {"error": str(e)}
+                
+                # Write error to summary file immediately
+                with open(summary_path, 'a') as f:
+                    f.write(f"{case_dir}: ERROR - {str(e)}\n")
+                    f.flush()
+                continue
+        
+        # Calculate and print summary statistics
+        successful_cases = {k: v for k, v in all_metrics.items() if "error" not in v}
+        if successful_cases:
+            print(f"\n📊 SUMMARY: {len(successful_cases)}/{len(case_dirs)} cases processed")
+            
+            mae_values = [metrics['MAE'] for metrics in successful_cases.values()]
+            psnr_values = [metrics['PSNR'] for metrics in successful_cases.values()]
+            ssim_values = [metrics['SSIM'] for metrics in successful_cases.values()]
+            time_values = [metrics['elapsed_minutes'] for metrics in successful_cases.values()]
+            patch_values = [metrics['total_patches'] for metrics in successful_cases.values()]
+            
+            print(f"   MAE: {np.mean(mae_values):.4f}±{np.std(mae_values):.4f}")
+            print(f"   PSNR: {np.mean(psnr_values):.4f}±{np.std(psnr_values):.4f} dB")
+            print(f"   SSIM: {np.mean(ssim_values):.4f}±{np.std(ssim_values):.4f}")
+            print(f"   Time: {np.mean(time_values):.1f}±{np.std(time_values):.1f} min")
+            print(f"   Patches: {np.mean(patch_values):.0f}±{np.std(patch_values):.0f}")
+            
+            # Count time warnings
+            time_warnings = sum(1 for metrics in successful_cases.values() if metrics['time_warning'])
+            if time_warnings > 0:
+                print(f"   ⚠️  {time_warnings} cases took >15 minutes")
+            
+            # Append summary statistics to file
+            with open(summary_path, 'a') as f:
+                f.write(f"\nSUMMARY STATISTICS:\n")
+                f.write("-"*30 + "\n")
+                f.write(f"Successful cases: {len(successful_cases)}/{len(case_dirs)}\n")
+                f.write(f"MAE - Mean: {np.mean(mae_values):.4f}, Std: {np.std(mae_values):.4f}\n")
+                f.write(f"PSNR - Mean: {np.mean(psnr_values):.4f} dB, Std: {np.std(psnr_values):.4f}\n")
+                f.write(f"SSIM - Mean: {np.mean(ssim_values):.4f}, Std: {np.std(ssim_values):.4f}\n")
+                f.write(f"Time - Mean: {np.mean(time_values):.1f} min, Std: {np.std(time_values):.1f} min\n")
+                f.write(f"Patches - Mean: {np.mean(patch_values):.0f}, Std: {np.std(patch_values):.0f}\n")
+                if time_warnings > 0:
+                    f.write(f"Time warnings (>15min): {time_warnings} cases\n")
+            
+            print(f"📄 Summary saved to: {summary_path}")
+        
+        return all_metrics
         
     def calculate_metrics(self, ground_truth_ct_path, predicted_ct_path, mask_path=None):
         """
@@ -508,47 +778,99 @@ class SynthradAlgorithm:
 
 def main():
     """Example usage of SynthradAlgorithm."""
-    # Configuration
-    config_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/exp_configs/test20-testseed1-nomaskloss.yaml"
+    # Configuration parameters
+    # config_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/exp_configs/test20-testseed1-nomaskloss.yaml"
+    config_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/exp_configs/test_apex3.yaml"
+    # checkpoint_dir = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/some_checkpoints/apex-dist3-llf-AB/epoch_700"
     checkpoint_dir = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/some_checkpoints/test20-testseed1-nomaskloss/epoch_500"
+    sampling_quality = "fast"  # Options: "fast", "medium", "high", "ultra"
     
-    # Initialize algorithm
+    # Data and output paths
+    data_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_ABCD/Task1/AB"
+    exp_name = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_llfAB1-500"
+    
+    # CT and MRI value bounds
+    CT_UPPER = 3071.0
+    CT_LOWER = -1024.0
+    MRI_UPPER = 1357.0
+    MRI_LOWER = 0.0
+    
+    # Sliding window parameters
+    padding_mode = "reflect"
+    sigma_scale = 0.125
+    mode = "gaussian"
+    overlap = 0.5
+    
+    # Initialize algorithm with all parameters
     synthrad = SynthradAlgorithm(
         config_path=config_path,
         checkpoint_dir=checkpoint_dir,
-        sampling_quality="fast"  # Options: "fast", "medium", "high", "ultra"
+        sampling_quality=sampling_quality,
+        device='cuda:0',
+        ct_upper=CT_UPPER,
+        ct_lower=CT_LOWER,
+        mri_upper=MRI_UPPER,
+        mri_lower=MRI_LOWER,
+        padding_mode=padding_mode,
+        sigma_scale=sigma_scale,
+        mode=mode,
+        overlap=overlap
     )
     
-    # Example paths
-    mri_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mr.mha"
-    save_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/predicted_ct.mha"
+    # # Example 1: Process single case
+    # print("="*60)
+    # print("EXAMPLE 1: Processing single case")
+    # print("="*60)
     
-    # Predict CT from MRI
-    predicted_ct_path = synthrad.predict(
-        mri_path=mri_path,
-        save_path=save_path,
-        anatomical_region="HN"  # Options: "AB", "HN", "TH"
+    # mri_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mr.mha"
+    # mask_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mask.mha"
+    # save_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/predicted_ct.mha"
+    
+    # # Predict CT from MRI with actual mask
+    # predicted_ct_path = synthrad.predict(
+    #     mri_path=mri_path,
+    #     save_path=save_path,
+    #     mask_path=mask_path,  # Use actual mask file
+    #     anatomical_region="HN"  # Options: "AB", "HN", "TH"
+    # )
+    
+    # # If you have ground truth CT for comparison
+    # ground_truth_ct_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/ct.mha"
+    
+    # # Calculate metrics
+    # metrics = synthrad.calculate_metrics(
+    #     ground_truth_ct_path=ground_truth_ct_path,
+    #     predicted_ct_path=predicted_ct_path,
+    #     mask_path=mask_path
+    # )
+    
+    # # Plot comparison
+    # synthrad.plot_comparison(
+    #     ground_truth_ct_path=ground_truth_ct_path,
+    #     predicted_ct_path=predicted_ct_path,
+    #     mask_path=mask_path,
+    #     slice_indices={'axial': 50, 'coronal': 100, 'sagittal': 150},
+    #     save_path="/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/comparison.png"
+    # )
+    
+    # Example 2: Process multiple cases
+    print("\n" + "="*60)
+    print("EXAMPLE 2: Processing multiple cases")
+    print("="*60)
+    
+    # Process all cases in the directory
+    all_metrics = synthrad.process_cases(
+        data_path=data_path,
+        exp_name=exp_name,
+        anatomical_region="AB"  # Use "AB" for abdominal cases
     )
     
-    # If you have ground truth CT for comparison
-    ground_truth_ct_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/ct.mha"
-    mask_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mask.mha"
-    
-    # Calculate metrics
-    metrics = synthrad.calculate_metrics(
-        ground_truth_ct_path=ground_truth_ct_path,
-        predicted_ct_path=predicted_ct_path,
-        mask_path=mask_path
-    )
-    
-    # Plot comparison
-    synthrad.plot_comparison(
-        ground_truth_ct_path=ground_truth_ct_path,
-        predicted_ct_path=predicted_ct_path,
-        mask_path=mask_path,
-        slice_indices={'axial': 50, 'coronal': 100, 'sagittal': 150},
-        save_path="/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/comparison.png"
-    )
+    print(f"\nProcessing completed! Check the output directory: {exp_name}")
+    print("The directory contains:")
+    print("  - sct_*.mha files: Synthetic CT images")
+    print("  - other/sct_*.png files: Comparison plots")
+    print("  - other/config.yaml: Configuration parameters")
+    print("  - other/summary_metrics_*.txt: Summary of all metrics")
 
 
 if __name__ == "__main__":

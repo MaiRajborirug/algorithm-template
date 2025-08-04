@@ -3,29 +3,6 @@
     "outputs": [
       {
         "type": "metaio_image",
-        "filename": "output/images/synthetic-ct/1AB005.mha"
-      }
-    ],
-    "inputs": [
-      {
-        "type": "metaio_image",
-        "filename": "test_mha/images/mri/1AB005.mha"
-      },
-      {
-        "type": "metaio_image",
-        "filename": "test_mha/images/body/1ABA005.mha"
-      },
-      {
-        "type": "String",
-        "filename": "test_mha/region.json"
-      }
-    ],
-    "error_messages": []
-  },
-  {
-    "outputs": [
-      {
-        "type": "metaio_image",
         "filename": "output/images/synthetic-ct/1HNA001.mha"
       }
     ],
