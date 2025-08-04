@@ -1,0 +1,163 @@
+CUDA_VISIBLE_DEVICES: 0
+Mon Aug  4 21:30:20 2025       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.183.01             Driver Version: 535.183.01   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  NVIDIA A100-SXM4-40GB          On  | 00000000:47:00.0 Off |                    0 |
+| N/A   25C    P0              56W / 400W |      3MiB / 40960MiB |      0%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+== SLURM ARRAY TASK ==
+Using device: cuda
+Model has 561934465 trainable parameters.
+Model size: 2143.61 MB
+Loading checkpoint from '/home/rajbori.p/github/proj_synthrad/MOTFM3D/checkpoints/apex-dist3-llf-HN/epoch_700/checkpoint.pth'...
+Loaded checkpoint from epoch 700
+Model loaded from epoch 700
+
+============================================================
+EXAMPLE 2: Processing multiple cases
+============================================================
+Configuration saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/config.yaml
+Found 221 cases in /home/rajbori.p/dataset/proj_synthrad/training/synthRAD2025_Train_ABCD/Task1/HN
+Output directory: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1
+Summary file: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/summary_metrics_20250804_213109_8153.txt
+Load MRI: 1HNA001, shape: (118, 390, 533)
+Output volume shape: (118, 390, 533)
+Output volume range: [-9255.01, 11568.66]
+CT synthesis completed. Saved to: sct_1HNA001.mha
+Metrics - MAE: 1916.2439, PSNR: 2.1803 dB, SSIM: -0.0004
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA001.png
+   MAE: 1916.2439, PSNR: 2.1803dB, SSIM: -0.0004, Time: 9.7min, Patches: 455, Shape: (118, 390, 533), File: sct_1HNA001.mha
+Load MRI: 1HNA004, shape: (109, 382, 499)
+Output volume shape: (109, 382, 499)
+Output volume range: [-9806.37, 11509.50]
+CT synthesis completed. Saved to: sct_1HNA004.mha
+Metrics - MAE: 1907.2498, PSNR: 2.2080 dB, SSIM: -0.0004
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA004.png
+   MAE: 1907.2498, PSNR: 2.2080dB, SSIM: -0.0004, Time: 6.6min, Patches: 288, Shape: (109, 382, 499), File: sct_1HNA004.mha
+Load MRI: 1HNA006, shape: (112, 356, 529)
+Output volume shape: (112, 356, 529)
+Output volume range: [-9921.12, 11221.14]
+CT synthesis completed. Saved to: sct_1HNA006.mha
+Metrics - MAE: 1900.8491, PSNR: 2.0095 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA006.png
+   MAE: 1900.8491, PSNR: 2.0095dB, SSIM: -0.0003, Time: 8.0min, Patches: 364, Shape: (112, 356, 529), File: sct_1HNA006.mha
+Load MRI: 1HNA008, shape: (131, 392, 590)
+Output volume shape: (131, 392, 590)
+Output volume range: [-10516.58, 11678.05]
+CT synthesis completed. Saved to: sct_1HNA008.mha
+Metrics - MAE: 1912.9866, PSNR: 2.1927 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA008.png
+   MAE: 1912.9866, PSNR: 2.1927dB, SSIM: -0.0003, Time: 12.4min, Patches: 600, Shape: (131, 392, 590), File: sct_1HNA008.mha
+Load MRI: 1HNA010, shape: (116, 384, 560)
+Output volume shape: (116, 384, 560)
+Output volume range: [-9505.40, 11584.87]
+CT synthesis completed. Saved to: sct_1HNA010.mha
+Metrics - MAE: 1917.5176, PSNR: 2.1744 dB, SSIM: -0.0004
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA010.png
+   MAE: 1917.5176, PSNR: 2.1744dB, SSIM: -0.0004, Time: 8.0min, Patches: 455, Shape: (116, 384, 560), File: sct_1HNA010.mha
+Load MRI: 1HNA012, shape: (111, 379, 499)
+Output volume shape: (111, 379, 499)
+Output volume range: [-9296.77, 11579.52]
+CT synthesis completed. Saved to: sct_1HNA012.mha
+Metrics - MAE: 1920.6826, PSNR: 2.1572 dB, SSIM: -0.0002
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA012.png
+   MAE: 1920.6826, PSNR: 2.1572dB, SSIM: -0.0002, Time: 6.5min, Patches: 288, Shape: (111, 379, 499), File: sct_1HNA012.mha
+Load MRI: 1HNA013, shape: (134, 378, 585)
+Output volume shape: (134, 378, 585)
+Output volume range: [-10124.02, 11916.74]
+CT synthesis completed. Saved to: sct_1HNA013.mha
+Metrics - MAE: 1917.2120, PSNR: -2.9877 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA013.png
+   MAE: 1917.2120, PSNR: -2.9877dB, SSIM: -0.0003, Time: 10.8min, Patches: 480, Shape: (134, 378, 585), File: sct_1HNA013.mha
+Load MRI: 1HNA014, shape: (123, 378, 573)
+Output volume shape: (123, 378, 573)
+Output volume range: [-9500.51, 11645.60]
+CT synthesis completed. Saved to: sct_1HNA014.mha
+Metrics - MAE: 1920.9664, PSNR: 2.1576 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA014.png
+   MAE: 1920.9664, PSNR: 2.1576dB, SSIM: -0.0003, Time: 8.5min, Patches: 392, Shape: (123, 378, 573), File: sct_1HNA014.mha
+Load MRI: 1HNA015, shape: (115, 379, 499)
+Output volume shape: (115, 379, 499)
+Output volume range: [-9398.06, 11202.67]
+CT synthesis completed. Saved to: sct_1HNA015.mha
+Metrics - MAE: 1910.2205, PSNR: 2.2033 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA015.png
+   MAE: 1910.2205, PSNR: 2.2033dB, SSIM: -0.0003, Time: 6.9min, Patches: 312, Shape: (115, 379, 499), File: sct_1HNA015.mha
+Load MRI: 1HNA018, shape: (135, 381, 542)
+Output volume shape: (135, 381, 542)
+Output volume range: [-8892.90, 11392.04]
+CT synthesis completed. Saved to: sct_1HNA018.mha
+Metrics - MAE: 1910.1689, PSNR: 2.2050 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA018.png
+   MAE: 1910.1689, PSNR: 2.2050dB, SSIM: -0.0003, Time: 9.0min, Patches: 420, Shape: (135, 381, 542), File: sct_1HNA018.mha
+Load MRI: 1HNA019, shape: (117, 356, 516)
+Output volume shape: (117, 356, 516)
+Output volume range: [-9429.59, 10878.71]
+CT synthesis completed. Saved to: sct_1HNA019.mha
+Metrics - MAE: 1931.2336, PSNR: 0.5745 dB, SSIM: -0.0004
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA019.png
+   MAE: 1931.2336, PSNR: 0.5745dB, SSIM: -0.0004, Time: 7.9min, Patches: 364, Shape: (117, 356, 516), File: sct_1HNA019.mha
+Load MRI: 1HNA021, shape: (125, 355, 577)
+Output volume shape: (125, 355, 577)
+Output volume range: [-9389.48, 12096.71]
+CT synthesis completed. Saved to: sct_1HNA021.mha
+Metrics - MAE: 1926.2058, PSNR: 2.1371 dB, SSIM: -0.0004
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA021.png
+   MAE: 1926.2058, PSNR: 2.1371dB, SSIM: -0.0004, Time: 9.5min, Patches: 448, Shape: (125, 355, 577), File: sct_1HNA021.mha
+Load MRI: 1HNA023, shape: (114, 381, 482)
+Output volume shape: (114, 381, 482)
+Output volume range: [-9606.70, 11883.91]
+CT synthesis completed. Saved to: sct_1HNA023.mha
+Metrics - MAE: 1919.2706, PSNR: -2.5569 dB, SSIM: -0.0002
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA023.png
+   MAE: 1919.2706, PSNR: -2.5569dB, SSIM: -0.0002, Time: 6.9min, Patches: 312, Shape: (114, 381, 482), File: sct_1HNA023.mha
+Load MRI: 1HNA025, shape: (130, 371, 593)
+Output volume shape: (130, 371, 593)
+Output volume range: [-10376.42, 11192.26]
+CT synthesis completed. Saved to: sct_1HNA025.mha
+Metrics - MAE: 1914.0482, PSNR: 2.1900 dB, SSIM: -0.0004
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA025.png
+   MAE: 1914.0482, PSNR: 2.1900dB, SSIM: -0.0004, Time: 10.3min, Patches: 480, Shape: (130, 371, 593), File: sct_1HNA025.mha
+Load MRI: 1HNA026, shape: (115, 383, 499)
+Output volume shape: (115, 383, 499)
+Output volume range: [-9820.01, 11407.44]
+CT synthesis completed. Saved to: sct_1HNA026.mha
+Metrics - MAE: 1910.6981, PSNR: 2.1980 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA026.png
+   MAE: 1910.6981, PSNR: 2.1980dB, SSIM: -0.0003, Time: 6.9min, Patches: 312, Shape: (115, 383, 499), File: sct_1HNA026.mha
+Load MRI: 1HNA028, shape: (127, 364, 588)
+Output volume shape: (127, 364, 588)
+Output volume range: [-9436.06, 12099.80]
+CT synthesis completed. Saved to: sct_1HNA028.mha
+Metrics - MAE: 1895.4491, PSNR: 2.2695 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA028.png
+   MAE: 1895.4491, PSNR: 2.2695dB, SSIM: -0.0003, Time: 9.5min, Patches: 448, Shape: (127, 364, 588), File: sct_1HNA028.mha
+Load MRI: 1HNA029, shape: (99, 359, 563)
+Output volume shape: (99, 359, 563)
+Output volume range: [-10165.90, 10739.57]
+CT synthesis completed. Saved to: sct_1HNA029.mha
+Metrics - MAE: 1909.4581, PSNR: 2.2102 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA029.png
+   MAE: 1909.4581, PSNR: 2.2102dB, SSIM: -0.0003, Time: 6.8min, Patches: 308, Shape: (99, 359, 563), File: sct_1HNA029.mha
+Load MRI: 1HNA030, shape: (123, 375, 535)
+Output volume shape: (123, 375, 535)
+Output volume range: [-9696.37, 11641.58]
+CT synthesis completed. Saved to: sct_1HNA030.mha
+Metrics - MAE: 1903.1578, PSNR: 2.2382 dB, SSIM: -0.0003
+Comparison plot saved to: /home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/algorithm-template/output_llfHN1/other/sct_1HNA030.png
+   MAE: 1903.1578, PSNR: 2.2382dB, SSIM: -0.0003, Time: 8.5min, Patches: 392, Shape: (123, 375, 535), File: sct_1HNA030.mha
+Load MRI: 1HNA031, shape: (110, 379, 499)

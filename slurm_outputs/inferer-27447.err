@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/home/rajbori.p/github/proj_synthrad/algorithm-template/inferer_ver7.py", line 884, in <module>
+    main() 
+    ^^^^^^
+  File "/home/rajbori.p/github/proj_synthrad/algorithm-template/inferer_ver7.py", line 812, in main
+    synthrad = SynthradAlgorithm(
+               ^^^^^^^^^^^^^^^^^^
+  File "/home/rajbori.p/github/proj_synthrad/algorithm-template/inferer_ver7.py", line 68, in __init__
+    self.config = load_config(config_path)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rajbori.p/github/proj_synthrad/algorithm-template/utils/general_utils.py", line 21, in load_config
+    with open(config_path, "r") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/rajbori.p/github/home/rajbori.p/github/proj_synthrad/MOTFM3D/configs/test_apex1.yaml'
+srun: error: prism-1: task 0: Exited with exit code 1

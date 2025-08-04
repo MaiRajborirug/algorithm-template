@@ -1,0 +1,2 @@
+/home/rajbori.p/miniconda/envs/py311_min/bin/python: can't open file '/home/rajbori.p/github/proj_synthrad/algorithm-template/slurm_outputs/inferer_ver7.py': [Errno 2] No such file or directory
+srun: error: prism-1: task 0: Exited with exit code 2

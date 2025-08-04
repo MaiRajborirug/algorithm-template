@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/rajbori.p/github/proj_synthrad/algorithm-template/inferer_ver7.py", line 19, in <module>
+    from utils.utils_fm import build_model
+  File "/home/rajbori.p/github/proj_synthrad/algorithm-template/utils/utils_fm.py", line 6, in <module>
+    from generative.networks.nets import DiffusionModelUNet, ControlNet
+ModuleNotFoundError: No module named 'generative'
+srun: error: prism-1: task 0: Exited with exit code 1
