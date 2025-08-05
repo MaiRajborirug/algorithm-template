@@ -310,7 +310,8 @@ def main():
     parser.add_argument(
         "--checkpoint_dir",
         type=str,
-        default="some_checkpoints/test20-testseed1-nomaskloss/epoch_500",
+        # default="some_checkpoints/test20-testseed1-nomaskloss/epoch_500",
+        default="some_checkpoints/apex-dist3-llf-HN/epoch_700",
         help="Path to the checkpoint directory.",
     )
     args = parser.parse_args()
