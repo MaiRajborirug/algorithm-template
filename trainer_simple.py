@@ -13,9 +13,10 @@ import torch.optim as optim
 from tqdm import tqdm
 import random
 
-# TensorBoard logging
-from torch.utils.tensorboard.writer import SummaryWriter
+# Remove TensorBoard logging import
 import shutil
+from typing import Optional
+from torch.utils.tensorboard.writer import SummaryWriter
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from flow_matching.path.scheduler import CondOTScheduler
@@ -47,7 +48,7 @@ class MhaDataset_small(Dataset):
     def __init__(self, 
                  root_dir,
                  transform=None,
-                 n_images=65,
+                 n_images=5,
                  n_patches=50,
                  patch_size=(16,128,128),
                  reverse=False,
@@ -90,16 +91,16 @@ class MhaDataset_small(Dataset):
         # fitting process
         if self.scale == 'sigmoid2':
             self.ct_sigmoid2 = Sigmoid2()
-        elif self.scale == 'uniform' and self.npy_root is not None:
+        elif self.scale == 'uniform':
             lower, upper = -1.0, 1.0
             self.ct_qt = QT(file_path=os.path.join(self.npy_root, "ct_mask1.npy"), seed=seed)
-        elif self.scale == 'uniform2' and self.npy_root is not None:
+        elif self.scale == 'uniform2':
             self.ct_gbdt = GBoost(file_path=os.path.join(self.npy_root, "ct_mask1.npy"), seed=seed)
 
-        if self.scale_mask == 'uniform' and self.npy_root is not None:
+        if self.scale_mask == 'uniform':
             lower, upper = -1.0, 1.0
             self.mri_qt = QT(file_path=os.path.join(self.npy_root, "mri_mask1.npy"), seed=seed)
-        elif self.scale_mask == 'uniform2' and self.npy_root is not None:
+        elif self.scale_mask == 'uniform2':
             self.mri_gbdt = GBoost(file_path=os.path.join(self.npy_root, "mri_mask1.npy"), seed=seed)
 
         for i, d in enumerate(self.sample_dirs):
@@ -303,13 +304,13 @@ def main():
     parser.add_argument(
         "--config_path",
         type=str,
-        default="configs/test1.yaml",
+        default="exp_configs/test_3090_1.yaml",
         help="Path to the configuration file.",
     )
     parser.add_argument(
         "--checkpoint_dir",
         type=str,
-        required=True,
+        default="some_checkpoints/test20-testseed1-nomaskloss/epoch_500",
         help="Path to the checkpoint directory.",
     )
     args = parser.parse_args()
@@ -326,7 +327,7 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # ====== Logging & TensorBoard ======
+    # ====== Logging ======
     logs_dir = os.path.join(os.path.dirname(__file__), "logs")
     os.makedirs(logs_dir, exist_ok=True)
     experiment_name = os.path.basename(checkpoint_dir.rstrip("/"))
@@ -336,12 +337,6 @@ def main():
     exp_config_path = os.path.join(exp_config_dir, f"{experiment_name}_validation.yaml")
     shutil.copy2(config_path, exp_config_path)
     print("Validation config saved to:", exp_config_path)
-    writer = SummaryWriter(log_dir=os.path.join(logs_dir, f"{experiment_name}_validation"))
-    print("TensorBoard log files in:", writer.log_dir)
-    # Log config as text to TensorBoard
-    with open(config_path, "r") as f:
-        config_text = f.read()
-    writer.add_text("validation_config", f"```yaml\n{config_text}\n```", 0)
     print("Using device:", device)
 
     # Model configuration flags
@@ -414,13 +409,14 @@ def main():
         checkpoint_dir=checkpoint_dir,
         epoch=start_epoch,
         solver_config=solver_config,
-        writer=writer,
+        writer=None,  # Pass None instead of writer
         max_samples=num_val_samples,
         class_map={0: "AB", 1: "HN", 2: "TH"},
         mask_conditioning=mask_conditioning,
         class_conditioning=class_conditioning,
         val=True,
         scale=da["scale"],
+        print_batch_results=True,  # Enable batch-level result printing
     )
     
     print(f"Validation Results:")
@@ -428,14 +424,10 @@ def main():
     print(f"  PSNR: {val_psnr:.4f} dB")
     print(f"  SSIM: {val_ssim:.4f}")
     
-    # Log to TensorBoard
-    writer.add_scalar("MAE/val", val_mae, start_epoch)
-    writer.add_scalar("PSNR/val", val_psnr, start_epoch)
-    writer.add_scalar("SSIM/val", val_ssim, start_epoch)
-
-    writer.close()
     print("Validation complete!")
 
 
 if __name__ == "__main__":
     main() 
+
+# python trainer_simple.py --config_path /media/prajbori/sda/private/github/proj_synthrad/algorithm-template/exp_configs/test_3090_1.yaml --checkpoint_dir /media/prajbori/sda/private/github/proj_synthrad/algorithm-template/some_checkpoints/apex-dist3-llf-HN/epoch_700

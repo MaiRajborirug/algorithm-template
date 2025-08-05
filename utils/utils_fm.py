@@ -267,7 +267,8 @@ def validate_and_save_samples(
     mask_conditioning=True,
     class_conditioning=False,
     val=True,
-    scale='linear'
+    scale='linear',
+    print_batch_results=False
 ):
     """Run your model on a handful of validation batches, 
     generate samples via the flow-matching solver, 
@@ -294,7 +295,15 @@ def validate_and_save_samples(
     psnr_list = []
     ssim_list = []
     count, step_plot_done = 0, False # sample counter
+    batch_count = 0
+    total_batches = len(val_loader)
+    
     for batch in val_loader:
+        batch_count += 1
+        batch_mae_list = []
+        batch_psnr_list = []
+        batch_ssim_list = []
+        
         imgs = batch["images"].to(device)
         cond = batch["classes"].to(device).unsqueeze(1).float() if class_conditioning else None
         # cond = batch["classes"].to(device).float() if class_conditioning else None
@@ -474,6 +483,11 @@ def validate_and_save_samples(
             mae_list.append(mae)
             psnr_list.append(psnr)
             ssim_list.append(ssim_val)
+            
+            # Add to batch lists for batch-level reporting
+            batch_mae_list.append(mae)
+            batch_psnr_list.append(psnr)
+            batch_ssim_list.append(ssim_val)
 
             if class_map and "classes" in batch:
                 idx = batch["classes"][i].argmax().item()
@@ -490,6 +504,14 @@ def validate_and_save_samples(
                         indent=4,
                     )
             count += 1
+            
+        # Print batch results if enabled
+        if print_batch_results and batch_mae_list:
+            batch_avg_mae = np.mean(batch_mae_list)
+            batch_avg_psnr = np.mean(batch_psnr_list)
+            batch_avg_ssim = np.nanmean(batch_ssim_list)
+            print(f"[Batch {batch_count}/{total_batches}] Avg MAE: {batch_avg_mae:.4f}, Avg PSNR: {batch_avg_psnr:.2f} dB, Avg SSIM: {batch_avg_ssim:.4f}")
+            
         if not step_plot_done:
             clz = batch["classes"] if class_map and "classes" in batch else None
             plot_solver_steps(sol, imgs, masks, clz, class_map, outdir)
