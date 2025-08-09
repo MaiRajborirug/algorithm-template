@@ -19,6 +19,10 @@ from utils.general_utils import load_config, load_checkpoint
 from utils.utils_fm import build_model
 from utils.scaling import GBoost, Sigmoid2, QT
 from monai.inferers.utils import sliding_window_inference
+import importlib
+import argparse
+
+# NOTE: The experiment list is selected via --list_exp at runtime
 
 
 class SynthradAlgorithm:
@@ -55,6 +59,9 @@ class SynthradAlgorithm:
         self.sigma_scale = sigma_scale
         self.mode = mode
         self.overlap = overlap
+        # Store paths
+        self.config_path = config_path
+        self.checkpoint_dir = checkpoint_dir
         
         # Sampling steps configuration
         self.SAMPLING_STEPS = {
@@ -86,7 +93,7 @@ class SynthradAlgorithm:
         # Set model to evaluation mode
         self.model.eval()
         
-    def save_config(self, exp_name):
+    def save_config(self, exp_name, data_path=None, anatomical_region=None, max_cases=None):
         """Save configuration parameters to a YAML file."""
         import yaml
         import os
@@ -102,7 +109,13 @@ class SynthradAlgorithm:
             'overlap': self.overlap,
             'sampling_quality': self.sampling_quality,
             'num_sampling_steps': self.num_sampling_steps,
-            'device': str(self.device)
+            'device': str(self.device),
+            'config_path': self.config_path,
+            'checkpoint_dir': self.checkpoint_dir,
+            'data_path': data_path,
+            'exp_name': exp_name,
+            'anatomical_region': anatomical_region,
+            'max_cases': max_cases,
         }
         
         config_path = os.path.join(exp_name, "other", "config.yaml")
@@ -387,7 +400,16 @@ class SynthradAlgorithm:
         )
         
         # Convert to numpy and denormalize
-        pred_norm = pred_norm.cpu().numpy()[0, 0]  # Remove batch and channel dims
+        # Ensure we have a Tensor (MONAI may return tuple/dict in some cases)
+        if isinstance(pred_norm, (list, tuple)):
+            pred_norm_tensor = pred_norm[0]
+        elif isinstance(pred_norm, dict):
+            # take first tensor value
+            pred_norm_tensor = next(iter(pred_norm.values()))
+        else:
+            pred_norm_tensor = pred_norm
+
+        pred_norm = pred_norm_tensor.cpu().numpy()[0, 0]  # Remove batch and channel dims
         
         # Get original MRI statistics for denormalization
         mri_min, mri_max = float(np.min(mri_arr)), float(np.max(mri_arr))
@@ -460,7 +482,7 @@ class SynthradAlgorithm:
         
         return save_path
         
-    def process_cases(self, data_path, exp_name, anatomical_region="HN"):
+    def process_cases(self, data_path, exp_name, anatomical_region="HN", max_cases=None):
         """
         Process multiple cases from a data directory.
         
@@ -468,6 +490,7 @@ class SynthradAlgorithm:
             data_path: Path to data directory containing case folders
             exp_name: Path to output directory for results
             anatomical_region: Anatomical region ("AB", "HN", "TH")
+            max_cases: Optional maximum number of cases to process
             
         Returns:
             dict: Dictionary containing metrics for all processed cases
@@ -481,6 +504,8 @@ class SynthradAlgorithm:
         os.makedirs(exp_name, exist_ok=True)
         other_dir = os.path.join(exp_name, "other")
         os.makedirs(other_dir, exist_ok=True)
+        synthesis_dir = os.path.join(exp_name, "synthesis")
+        os.makedirs(synthesis_dir, exist_ok=True)
         
         # Create unique summary file name
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -489,11 +514,13 @@ class SynthradAlgorithm:
         summary_path = os.path.join(other_dir, summary_filename)
         
         # Save configuration
-        self.save_config(exp_name)
+        self.save_config(exp_name, data_path=data_path, anatomical_region=anatomical_region, max_cases=max_cases)
         
         # Get all case directories
         case_dirs = [d for d in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, d))]
         case_dirs.sort()  # Sort for consistent processing order
+        if max_cases is not None:
+            case_dirs = case_dirs[:max_cases]
         
         print(f"Found {len(case_dirs)} cases in {data_path}")
         print(f"Output directory: {exp_name}")
@@ -535,7 +562,7 @@ class SynthradAlgorithm:
             
             # Define output paths
             sct_filename = f"sct_{case_dir}.mha"
-            sct_path = os.path.join(exp_name, sct_filename)
+            sct_path = os.path.join(synthesis_dir, sct_filename)
             comparison_plot_path = os.path.join(other_dir, f"sct_{case_dir}.png")
             
             try:
@@ -823,104 +850,136 @@ class SynthradAlgorithm:
 
 
 def main():
-    """Example usage of SynthradAlgorithm."""
-    # Configuration parameters
-    # config_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/exp_configs/test20-testseed1-nomaskloss.yaml"
-    config_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/exp_configs/test_apex4.yaml"
+    """Run multiple experiments defined in dict.py experiment lists"""
+    # Parse CLI arguments
+    parser = argparse.ArgumentParser(description="Batch run inference experiments")
+    parser.add_argument("--list_exp", type=str, default="llf_HN", help="Which list to use: llf_HN, llf_AB, or default 'list_exp'")
+    parser.add_argument("--gpu", type=str, default="cuda:0", help="GPU device string, e.g., cuda:0 or cuda:1")
+    args = parser.parse_args()
 
-    # checkpoint_dir = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/some_checkpoints/apex-dist3-llf-AB/epoch_700"
-    checkpoint_dir = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/some_checkpoints/apex-dist3-u2lf-AB/epoch_700"
+    # Select experiment list based on argument
+    exp_module = importlib.import_module('dict')
+    if args.list_exp == "llf_HN" and hasattr(exp_module, 'list_exp_llf_HN'):
+        list_exp = getattr(exp_module, 'list_exp_llf_HN')
+        SUMMARY_LIST_NAME = 'list_exp_llf_HN'
+    elif args.list_exp == "llf_AB" and hasattr(exp_module, 'list_exp_llf_AB'):
+        list_exp = getattr(exp_module, 'list_exp_llf_AB')
+        SUMMARY_LIST_NAME = 'list_exp_llf_AB'
+    elif hasattr(exp_module, 'list_exp'):
+        list_exp = getattr(exp_module, 'list_exp')
+        SUMMARY_LIST_NAME = 'list_exp'
+    else:
+        raise ImportError("Requested experiment list not found in dict.py")
 
-    sampling_quality = "fast"  # Options: "fast", "medium", "high", "ultra"
-    # Data and output paths
+    device_arg = args.gpu
 
-    data_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_ABCD/Task1/AB"
-    
-    # exp_name = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_llfAB1-700-2"
-    exp_name = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_u2lfAB1-700"
-    
-    # CT and MRI value bounds
-    CT_UPPER = 3071.0
-    CT_LOWER = -1024.0
-    MRI_UPPER = 1357.0
-    MRI_LOWER = 0.0
-    
-    # Sliding window parameters
-    padding_mode = "reflect"
-    sigma_scale = 0.125
-    mode = "gaussian"
-    overlap = 0.2 # 0.5
-    
-    # Initialize algorithm with all parameters
-    synthrad = SynthradAlgorithm(
-        config_path=config_path,
-        checkpoint_dir=checkpoint_dir,
-        sampling_quality=sampling_quality,
-        device='cuda:0',
-        ct_upper=CT_UPPER,
-        ct_lower=CT_LOWER,
-        mri_upper=MRI_UPPER,
-        mri_lower=MRI_LOWER,
-        padding_mode=padding_mode,
-        sigma_scale=sigma_scale,
-        mode=mode,
-        overlap=overlap
-    )
-    
-    # # Example 1: Process single case
-    # print("="*60)
-    # print("EXAMPLE 1: Processing single case")
-    # print("="*60)
-    
-    # mri_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mr.mha"
-    # mask_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mask.mha"
-    # save_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/predicted_ct.mha"
-    
-    # # Predict CT from MRI with actual mask
-    # predicted_ct_path = synthrad.predict(
-    #     mri_path=mri_path,
-    #     save_path=save_path,
-    #     mask_path=mask_path,  # Use actual mask file
-    #     anatomical_region="HN"  # Options: "AB", "HN", "TH"
-    # )
-    
-    # # If you have ground truth CT for comparison
-    # ground_truth_ct_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/ct.mha"
-    
-    # # Calculate metrics
-    # metrics = synthrad.calculate_metrics(
-    #     ground_truth_ct_path=ground_truth_ct_path,
-    #     predicted_ct_path=predicted_ct_path,
-    #     mask_path=mask_path
-    # )
-    
-    # # Plot comparison
-    # synthrad.plot_comparison(
-    #     ground_truth_ct_path=ground_truth_ct_path,
-    #     predicted_ct_path=predicted_ct_path,
-    #     mask_path=mask_path,
-    #     slice_indices={'axial': 50, 'coronal': 100, 'sagittal': 150},
-    #     save_path="/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/comparison.png"
-    # )
-    
-    # Example 2: Process multiple cases
-    print("\n" + "="*60)
-    print("EXAMPLE 2: Processing multiple cases")
-    print("="*60)
-    
-    # Process all cases in the directory
-    all_metrics = synthrad.process_cases(
-        data_path=data_path,
-        exp_name=exp_name,
-        anatomical_region="AB"  # Use "AB" for abdominal cases
-    )
-    
-    print(f"\nProcessing completed! Check the output directory: {exp_name}")
-    print("The directory contains:")
-    print("  - sct_*.mha files: Synthetic CT images")
-    print("  - other/sct_*.png files: Comparison plots")
-    print("  - other/config.yaml: Configuration parameters")
-    print("  - other/summary_metrics_*.txt: Summary of all metrics")
+    total = len(list_exp)
+    print(f"Found {total} experiments in dict.py -> {SUMMARY_LIST_NAME}")
+
+    # Prepare aggregated summary file in ./outputs_exp
+    import time
+    outputs_dir = os.path.join(os.path.dirname(__file__), "outputs_exp")
+    os.makedirs(outputs_dir, exist_ok=True)
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    agg_summary_path = os.path.join(outputs_dir, f"{SUMMARY_LIST_NAME}_{timestamp}.txt")
+    with open(agg_summary_path, 'w') as f:
+        f.write(f"Aggregated summary for {SUMMARY_LIST_NAME} at {timestamp}\n")
+        f.write("="*80 + "\n")
+        f.write("exp_name_short, MAE(mean±std), PSNR(mean±std dB), SSIM(mean±std), Time(mean±std min), Patches(mean±std)\n")
+        f.flush()
+
+    for idx, exp in tqdm(enumerate(list_exp, start=1), total=total):
+        print("\n" + "="*80)
+        print(f"Running experiment {idx}/{total}: {exp.get('exp_name', '(no name)')}")
+        print("="*80)
+
+        # Extract parameters with sensible defaults
+        config_path = exp.get('config_path')
+        checkpoint_dir = exp.get('checkpoint_dir')
+        sampling_quality = exp.get('sampling_quality', 'fast')
+        # device provided via CLI overrides any dict value
+        CT_UPPER = float(exp.get('CT_UPPER', 3071.0))
+        CT_LOWER = float(exp.get('CT_LOWER', -1024.0))
+        MRI_UPPER = float(exp.get('MRI_UPPER', 1357.0))
+        MRI_LOWER = float(exp.get('MRI_LOWER', 0.0))
+        padding_mode = exp.get('padding_mode', 'reflect')
+        sigma_scale = float(exp.get('sigma_scale', 0.125))
+        mode = exp.get('mode', 'gaussian')
+        overlap = float(exp.get('overlap', 0.2))
+        data_path = exp.get('data_path')
+        exp_name = exp.get('exp_name')
+        anatomical_region = exp.get('anatomical_region', 'HN')
+        max_cases = exp.get('max_cases', None)
+
+        # Validation of required paths
+        if config_path is None or checkpoint_dir is None or data_path is None or exp_name is None:
+            print("Skipping experiment due to missing required paths (config_path/checkpoint_dir/data_path/exp_name)")
+            continue
+
+        # Initialize algorithm
+        synthrad = SynthradAlgorithm(
+            config_path=config_path,
+            checkpoint_dir=checkpoint_dir,
+            sampling_quality=sampling_quality,
+            device=device_arg,
+            ct_upper=CT_UPPER,
+            ct_lower=CT_LOWER,
+            mri_upper=MRI_UPPER,
+            mri_lower=MRI_LOWER,
+            padding_mode=padding_mode,
+            sigma_scale=sigma_scale,
+            mode=mode,
+            overlap=overlap
+        )
+
+        # Process cases for this experiment
+        all_metrics = synthrad.process_cases(
+            data_path=data_path,
+            exp_name=exp_name,
+            anatomical_region=anatomical_region,
+            max_cases=max_cases
+        )
+
+        print(f"\nProcessing completed for: {exp_name}")
+        print("The directory contains:")
+        print("  - synthesis/sct_*.mha: Synthetic CT images")
+        print("  - other/sct_*.png: Comparison plots")
+        print("  - other/config.yaml: Configuration parameters")
+        print("  - other/summary_metrics_*.txt: Summary of all metrics")
+
+        # Compute per-experiment summary (mean±std) and append to aggregated summary file
+        successful = [m for m in all_metrics.values() if isinstance(m, dict) and 'error' not in m]
+        if len(successful) == 0:
+            line = f"{os.path.basename(exp_name)}: NO_SUCCESSFUL_CASES\n"
+        else:
+            mae_vals = np.array([m['MAE'] for m in successful], dtype=float)
+            psnr_vals = np.array([m['PSNR'] for m in successful], dtype=float)
+            ssim_vals = np.array([m['SSIM'] for m in successful], dtype=float)
+            time_vals = np.array([m.get('elapsed_minutes', np.nan) for m in successful], dtype=float)
+            patch_vals = np.array([m.get('total_patches', np.nan) for m in successful], dtype=float)
+
+            mae_mean, mae_std = np.nanmean(mae_vals), np.nanstd(mae_vals)
+            psnr_mean, psnr_std = np.nanmean(psnr_vals), np.nanstd(psnr_vals)
+            ssim_mean, ssim_std = np.nanmean(ssim_vals), np.nanstd(ssim_vals)
+            time_mean, time_std = np.nanmean(time_vals), np.nanstd(time_vals)
+            patch_mean, patch_std = np.nanmean(patch_vals), np.nanstd(patch_vals)
+
+            exp_short = os.path.basename(exp_name.rstrip('/'))
+            line = (
+                f"{exp_short}, "
+                f"MAE={mae_mean:.4f}±{mae_std:.4f},\t\t"
+                f"PSNR={psnr_mean:.4f}±{psnr_std:.4f} dB,\t"
+                f"SSIM={ssim_mean:.4f}±{ssim_std:.4f},\t"
+                f"Time={time_mean:.1f}±{time_std:.1f} min,\t"
+                f"Patches={patch_mean:.0f}±{patch_std:.0f}\n"
+            )
+
+        with open(agg_summary_path, 'a') as f:
+            f.write(line)
+            f.flush()
+
+    print(f"\nProcessing completed for all experiments.")
+    print(f"Aggregated summary appended to: {agg_summary_path}")
 
 
 if __name__ == "__main__":

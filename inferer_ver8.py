@@ -55,6 +55,9 @@ class SynthradAlgorithm:
         self.sigma_scale = sigma_scale
         self.mode = mode
         self.overlap = overlap
+        # Store paths
+        self.config_path = config_path
+        self.checkpoint_dir = checkpoint_dir
         
         # Sampling steps configuration
         self.SAMPLING_STEPS = {
@@ -86,7 +89,7 @@ class SynthradAlgorithm:
         # Set model to evaluation mode
         self.model.eval()
         
-    def save_config(self, exp_name):
+    def save_config(self, exp_name, data_path=None, anatomical_region=None, max_cases=None):
         """Save configuration parameters to a YAML file."""
         import yaml
         import os
@@ -102,7 +105,13 @@ class SynthradAlgorithm:
             'overlap': self.overlap,
             'sampling_quality': self.sampling_quality,
             'num_sampling_steps': self.num_sampling_steps,
-            'device': str(self.device)
+            'device': str(self.device),
+            'config_path': self.config_path,
+            'checkpoint_dir': self.checkpoint_dir,
+            'data_path': data_path,
+            'exp_name': exp_name,
+            'anatomical_region': anatomical_region,
+            'max_cases': max_cases,
         }
         
         config_path = os.path.join(exp_name, "other", "config.yaml")
@@ -387,7 +396,16 @@ class SynthradAlgorithm:
         )
         
         # Convert to numpy and denormalize
-        pred_norm = pred_norm.cpu().numpy()[0, 0]  # Remove batch and channel dims
+        # Ensure we have a Tensor (MONAI may return tuple/dict in some cases)
+        if isinstance(pred_norm, (list, tuple)):
+            pred_norm_tensor = pred_norm[0]
+        elif isinstance(pred_norm, dict):
+            # take first tensor value
+            pred_norm_tensor = next(iter(pred_norm.values()))
+        else:
+            pred_norm_tensor = pred_norm
+
+        pred_norm = pred_norm_tensor.cpu().numpy()[0, 0]  # Remove batch and channel dims
         
         # Get original MRI statistics for denormalization
         mri_min, mri_max = float(np.min(mri_arr)), float(np.max(mri_arr))
@@ -460,7 +478,7 @@ class SynthradAlgorithm:
         
         return save_path
         
-    def process_cases(self, data_path, exp_name, anatomical_region="HN"):
+    def process_cases(self, data_path, exp_name, anatomical_region="HN", max_cases=None):
         """
         Process multiple cases from a data directory.
         
@@ -468,6 +486,7 @@ class SynthradAlgorithm:
             data_path: Path to data directory containing case folders
             exp_name: Path to output directory for results
             anatomical_region: Anatomical region ("AB", "HN", "TH")
+            max_cases: Optional maximum number of cases to process
             
         Returns:
             dict: Dictionary containing metrics for all processed cases
@@ -481,6 +500,8 @@ class SynthradAlgorithm:
         os.makedirs(exp_name, exist_ok=True)
         other_dir = os.path.join(exp_name, "other")
         os.makedirs(other_dir, exist_ok=True)
+        synthesis_dir = os.path.join(exp_name, "synthesis")
+        os.makedirs(synthesis_dir, exist_ok=True)
         
         # Create unique summary file name
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -489,11 +510,13 @@ class SynthradAlgorithm:
         summary_path = os.path.join(other_dir, summary_filename)
         
         # Save configuration
-        self.save_config(exp_name)
+        self.save_config(exp_name, data_path=data_path, anatomical_region=anatomical_region, max_cases=max_cases)
         
         # Get all case directories
         case_dirs = [d for d in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, d))]
         case_dirs.sort()  # Sort for consistent processing order
+        if max_cases is not None:
+            case_dirs = case_dirs[:max_cases]
         
         print(f"Found {len(case_dirs)} cases in {data_path}")
         print(f"Output directory: {exp_name}")
@@ -535,7 +558,7 @@ class SynthradAlgorithm:
             
             # Define output paths
             sct_filename = f"sct_{case_dir}.mha"
-            sct_path = os.path.join(exp_name, sct_filename)
+            sct_path = os.path.join(synthesis_dir, sct_filename)
             comparison_plot_path = os.path.join(other_dir, f"sct_{case_dir}.png")
             
             try:
@@ -837,7 +860,7 @@ def main():
     data_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_ABCD/Task1/AB"
     
     # exp_name = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_llfAB1-700-2"
-    exp_name = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_u2lfAB1-700"
+    exp_name = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/outputs_exp/exp1"
     
     # CT and MRI value bounds
     CT_UPPER = 3071.0
@@ -866,43 +889,8 @@ def main():
         mode=mode,
         overlap=overlap
     )
-    
-    # # Example 1: Process single case
-    # print("="*60)
-    # print("EXAMPLE 1: Processing single case")
-    # print("="*60)
-    
-    # mri_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mr.mha"
-    # mask_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/mask.mha"
-    # save_path = "/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/predicted_ct.mha"
-    
-    # # Predict CT from MRI with actual mask
-    # predicted_ct_path = synthrad.predict(
-    #     mri_path=mri_path,
-    #     save_path=save_path,
-    #     mask_path=mask_path,  # Use actual mask file
-    #     anatomical_region="HN"  # Options: "AB", "HN", "TH"
-    # )
-    
-    # # If you have ground truth CT for comparison
-    # ground_truth_ct_path = "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Task1_Train_D/Task1/HN_x/1HND001/ct.mha"
-    
-    # # Calculate metrics
-    # metrics = synthrad.calculate_metrics(
-    #     ground_truth_ct_path=ground_truth_ct_path,
-    #     predicted_ct_path=predicted_ct_path,
-    #     mask_path=mask_path
-    # )
-    
-    # # Plot comparison
-    # synthrad.plot_comparison(
-    #     ground_truth_ct_path=ground_truth_ct_path,
-    #     predicted_ct_path=predicted_ct_path,
-    #     mask_path=mask_path,
-    #     slice_indices={'axial': 50, 'coronal': 100, 'sagittal': 150},
-    #     save_path="/media/prajbori/sda/private/github/proj_synthrad/algorithm-template/output_ver5/comparison.png"
-    # )
-    
+
+
     # Example 2: Process multiple cases
     print("\n" + "="*60)
     print("EXAMPLE 2: Processing multiple cases")
@@ -912,7 +900,8 @@ def main():
     all_metrics = synthrad.process_cases(
         data_path=data_path,
         exp_name=exp_name,
-        anatomical_region="AB"  # Use "AB" for abdominal cases
+        anatomical_region="AB",  # Use "AB" for abdominal cases
+        max_cases=1 # Pass max_cases=20
     )
     
     print(f"\nProcessing completed! Check the output directory: {exp_name}")

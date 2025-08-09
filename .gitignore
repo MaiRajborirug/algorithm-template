@@ -115,3 +115,4 @@ test*
 *orig*
 _*
 slurm_outputs/
+some_checkpoints/*

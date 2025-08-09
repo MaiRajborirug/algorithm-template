@@ -41,9 +41,9 @@ general_args:
 
 data_args:
   # NOTE: added
-  train_root: "/home/rajbori.p/dataset/proj_synthrad/training/synthRAD2025_Train_ABCD/Task1/AB"
-  val_root: "/home/rajbori.p/dataset/proj_synthrad/training/synthRAD2025_Train_ABCD/Task1/AB"
-  npy_root: "/home/rajbori.p/dataset/proj_synthrad/training"
+  train_root: "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Train_ABCD/Task1/AB"
+  val_root: "/media/prajbori/sda/private/dataset/proj_synthrad/training/synthRAD2025_Train_ABCD/Task1/AB"
+  npy_root: "/media/prajbori/sda/private/dataset/proj_synthrad/training"
   # Path to your dataset in .pkl format (must match the data structure specified in the README).
   # pickle_path: "./data/camus/dataset.pkl"
   pickle_path: "./configs/data_path.pkl"
@@ -67,9 +67,9 @@ data_args:
 
 train_args:
   # Number of epochs for model training.
-  num_epochs: 700 # 500
+  num_epochs: 1000 # 500
   # Batch size for training (change based on your GPU memory).
-  batch_size: 2
+  batch_size: 1
   # Learning rate for the optimizer. -> already adapt to batch size
   lr: 0.00002
   # Print training status (loss, iteration, etc.) every `print_every` steps.

@@ -258,7 +258,21 @@ def load_checkpoint(
     print(f"Loading checkpoint from '{checkpoint_path}'...")
     checkpoint = torch.load(checkpoint_path, map_location=device)
 
-    model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+    # # NOTE: previous version -> has module. prefix
+    # model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+    
+    # # NOTE: new version -> no module. prefix
+    # --- strip any "module." prefixes so this works with both DDP- and non-DDP-trained checkpoints
+    raw_sd = checkpoint["model_state_dict"]
+    # walk keys, drop leading "module." if present
+    from collections import OrderedDict
+    clean_sd = OrderedDict()
+    for k, v in raw_sd.items():
+        nk = k
+        if k.startswith("module."):
+            nk = k[len("module."):]
+        clean_sd[nk] = v
+    model.load_state_dict(clean_sd, strict=False)
 
     if not valid_only and optimizer is not None and checkpoint["optimizer_state_dict"] is not None:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
