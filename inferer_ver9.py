@@ -393,7 +393,7 @@ class SynthradAlgorithm:
             mode=self.mode,
             sigma_scale=self.sigma_scale,
             padding_mode=self.padding_mode,
-            cval=0.0,
+            cval=-1.0,
             sw_device=self.device,
             device=self.device,
             progress=True,
@@ -859,12 +859,24 @@ def main():
 
     # Select experiment list based on argument
     exp_module = importlib.import_module('dict')
-    if args.list_exp == "llf_HN" and hasattr(exp_module, 'list_exp_llf_HN'):
+    if args.list_exp in ["llf_HN", 'list_exp_llf_HN'] and hasattr(exp_module, 'list_exp_llf_HN'):
         list_exp = getattr(exp_module, 'list_exp_llf_HN')
         SUMMARY_LIST_NAME = 'list_exp_llf_HN'
-    elif args.list_exp == "llf_AB" and hasattr(exp_module, 'list_exp_llf_AB'):
+    elif args.list_exp in ["u2lf_HN", 'list_exp_u2lf_HN'] and hasattr(exp_module, 'list_exp_u2lf_HN'):
+        list_exp = getattr(exp_module, 'list_exp_u2lf_HN')
+        SUMMARY_LIST_NAME = 'list_exp_u2lf_HN'
+    elif args.list_exp in ["llf_AB", 'list_exp_llf_AB'] and hasattr(exp_module, 'list_exp_llf_AB'):
         list_exp = getattr(exp_module, 'list_exp_llf_AB')
         SUMMARY_LIST_NAME = 'list_exp_llf_AB'
+    elif args.list_exp in ["u2lf_AB", 'list_exp_u2lf_AB'] and hasattr(exp_module, 'list_exp_u2lf_AB'):
+        list_exp = getattr(exp_module, 'list_exp_u2lf_AB')
+        SUMMARY_LIST_NAME = 'list_exp_u2lf_AB'
+    elif args.list_exp in ["llf_TH", 'list_exp_llf_TH'] and hasattr(exp_module, 'list_exp_llf_TH'):
+        list_exp = getattr(exp_module, 'list_exp_llf_TH')
+        SUMMARY_LIST_NAME = 'list_exp_llf_TH'
+    elif args.list_exp in ["u2lf_TH", 'list_exp_u2lf_TH'] and hasattr(exp_module, 'list_exp_u2lf_TH'):
+        list_exp = getattr(exp_module, 'list_exp_u2lf_TH')
+        SUMMARY_LIST_NAME = 'list_exp_u2lf_TH'
     elif hasattr(exp_module, 'list_exp'):
         list_exp = getattr(exp_module, 'list_exp')
         SUMMARY_LIST_NAME = 'list_exp'
